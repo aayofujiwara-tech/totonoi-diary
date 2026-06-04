@@ -19,11 +19,12 @@ const hungerLabels = { hungry: '空腹', normal: '普通', full: '満腹' } as c
 
 export default function RecordPage() {
   const router = useRouter()
-  const { user } = useAuth()
+  const { user, loading: authLoading } = useAuth()
   const [facilities, setFacilities] = useState<Facility[]>([])
   const [step, setStep] = useState(1)
   const [saving, setSaving] = useState(false)
   const [done, setDone] = useState(false)
+  const [saveError, setSaveError] = useState('')
 
   const [form, setForm] = useState<RecordFormData>({
     facilityId: '',
@@ -63,13 +64,18 @@ export default function RecordPage() {
   }
 
   async function handleSubmit() {
-    if (!user) return
+    if (!user) {
+      setSaveError('ログインが必要です。再ログインしてください。')
+      return
+    }
     setSaving(true)
+    setSaveError('')
     try {
       await saveRecord(user.uid, form)
       setDone(true)
-    } catch {
-      alert('保存に失敗しました。再試行してください。')
+    } catch (err) {
+      console.error('saveRecord error:', err)
+      setSaveError('保存に失敗しました。通信環境を確認して再試行してください。')
     } finally {
       setSaving(false)
     }
@@ -265,12 +271,20 @@ export default function RecordPage() {
             次へ <ChevronRight className="w-4 h-4" />
           </button>
         ) : (
-          <button type="button" onClick={handleSubmit}
-            disabled={saving || form.totonoilScore === 0}
-            className="btn-amber flex-1 flex items-center justify-center gap-2"
-          >
-            {saving ? '保存中...' : <><Check className="w-4 h-4" />記録を保存</>}
-          </button>
+          <div className="flex-1 flex flex-col gap-2">
+            {step === TOTAL_STEPS && form.totonoilScore === 0 && (
+              <p className="text-xs text-amber-400 text-center">★をタップしてととのい度を選んでください</p>
+            )}
+            {saveError && (
+              <p className="text-xs text-red-400 bg-red-400/10 rounded-lg px-3 py-2 text-center">{saveError}</p>
+            )}
+            <button type="button" onClick={handleSubmit}
+              disabled={saving || authLoading || form.totonoilScore === 0}
+              className="btn-amber w-full flex items-center justify-center gap-2"
+            >
+              {saving ? '保存中...' : authLoading ? '準備中...' : <><Check className="w-4 h-4" />記録を保存</>}
+            </button>
+          </div>
         )}
       </div>
     </div>

@@ -51,6 +51,22 @@ export default function SetInput({ index, data, onChange, onRemove, canRemove }:
             value={data.coldBathSeconds ?? ''}
             onChange={e => update('coldBathSeconds', e.target.value ? parseInt(e.target.value) : undefined)} />
         </div>
+        <div>
+          <label className="label-text flex items-center gap-1">
+            <Thermometer className="w-3 h-3 text-red-400" />室温（℃）
+          </label>
+          <input type="number" className="input-dark text-center" placeholder="80" min={60} max={110}
+            value={data.saunaTemp ?? ''}
+            onChange={e => update('saunaTemp', e.target.value ? parseInt(e.target.value) : undefined)} />
+        </div>
+        <div>
+          <label className="label-text flex items-center gap-1">
+            <Droplets className="w-3 h-3 text-cyan-300" />水風呂温度（℃）
+          </label>
+          <input type="number" className="input-dark text-center" placeholder="16" min={5} max={25}
+            value={data.coldBathTemp ?? ''}
+            onChange={e => update('coldBathTemp', e.target.value ? parseInt(e.target.value) : undefined)} />
+        </div>
       </div>
 
       <div className="flex items-center justify-between mt-3 py-2">

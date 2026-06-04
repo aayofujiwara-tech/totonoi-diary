@@ -26,7 +26,9 @@ export type SetData = {
   sessionId: string
   setNumber: number
   saunaMinutes?: number
+  saunaTemp?: number
   coldBathSeconds?: number
+  coldBathTemp?: number
   loyly: boolean
   restType: 'outdoor' | 'indoor' | 'none'
 }

@@ -55,7 +55,9 @@ function docToSetData(id: string, d: DocumentData): SetData {
     sessionId: d.sessionId,
     setNumber: d.setNumber,
     saunaMinutes: d.saunaMinutes,
+    saunaTemp: d.saunaTemp,
     coldBathSeconds: d.coldBathSeconds,
+    coldBathTemp: d.coldBathTemp,
     loyly: d.loyly ?? false,
     restType: d.restType ?? 'none',
   }
@@ -211,7 +213,9 @@ export async function saveRecord(userId: string, data: RecordFormData): Promise<
       sessionId: sessionRef.id,
       setNumber: s.setNumber,
       saunaMinutes: s.saunaMinutes ?? null,
+      saunaTemp: s.saunaTemp ?? null,
       coldBathSeconds: s.coldBathSeconds ?? null,
+      coldBathTemp: s.coldBathTemp ?? null,
       loyly: s.loyly,
       restType: s.restType,
     })
