@@ -49,7 +49,7 @@ export default function SessionDetailPage() {
   async function handleDelete() {
     setDeleting(true)
     try {
-      await deleteRecord(id)
+      await deleteRecord(id, user!.uid)
       router.replace('/home')
     } catch (err) {
       console.error('[delete]', err)

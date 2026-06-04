@@ -327,8 +327,8 @@ export async function updateRecord(sessionId: string, userId: string, data: Reco
   }
 
   const [existingSetsSnap, existingCondsSnap] = await Promise.all([
-    getDocs(query(collection(db, 'sets'), where('sessionId', '==', sessionId))),
-    getDocs(query(collection(db, 'conditions'), where('sessionId', '==', sessionId))),
+    getDocs(query(collection(db, 'sets'), where('userId', '==', userId), where('sessionId', '==', sessionId))),
+    getDocs(query(collection(db, 'conditions'), where('userId', '==', userId), where('sessionId', '==', sessionId))),
   ])
 
   const batch = writeBatch(db)
@@ -373,10 +373,10 @@ export async function deleteFacility(facilityId: string): Promise<void> {
 
 // ── 記録削除（session + sets + conditions）─────────────────
 
-export async function deleteRecord(sessionId: string): Promise<void> {
+export async function deleteRecord(sessionId: string, userId: string): Promise<void> {
   const [setsSnap, condsSnap] = await Promise.all([
-    getDocs(query(collection(db, 'sets'), where('sessionId', '==', sessionId))),
-    getDocs(query(collection(db, 'conditions'), where('sessionId', '==', sessionId))),
+    getDocs(query(collection(db, 'sets'), where('userId', '==', userId), where('sessionId', '==', sessionId))),
+    getDocs(query(collection(db, 'conditions'), where('userId', '==', userId), where('sessionId', '==', sessionId))),
   ])
 
   const batch = writeBatch(db)
