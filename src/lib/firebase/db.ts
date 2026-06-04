@@ -281,7 +281,15 @@ export async function getUserStats(userId: string) {
 // ── 単一セッション取得（sets・condition・facility込み）──────
 
 export async function getSession(sessionId: string): Promise<Session | null> {
-  const sessionSnap = await getDoc(doc(db, 'sessions', sessionId))
+  console.log('[getSession] fetching sessionId:', sessionId)
+  let sessionSnap
+  try {
+    sessionSnap = await getDoc(doc(db, 'sessions', sessionId))
+  } catch (err) {
+    console.error('[getSession] getDoc error:', (err as {code?:string})?.code, err)
+    throw err
+  }
+  console.log('[getSession] exists:', sessionSnap.exists(), 'docId:', sessionSnap.id)
   if (!sessionSnap.exists()) return null
 
   const session = docToSession(sessionSnap.id, sessionSnap.data())
@@ -290,6 +298,7 @@ export async function getSession(sessionId: string): Promise<Session | null> {
     getDocs(query(collection(db, 'sets'), where('sessionId', '==', sessionId))),
     getDocs(query(collection(db, 'conditions'), where('sessionId', '==', sessionId))),
   ])
+  console.log('[getSession] sets:', setsSnap.size, 'conditions:', condsSnap.size)
 
   const sets = setsSnap.docs
     .map(d => docToSetData(d.id, d.data()))
