@@ -53,12 +53,13 @@ export default function DashboardPage() {
   const { user } = useAuth()
   const [data, setData] = useState<DashData | null>(null)
   const [loading, setLoading] = useState(true)
+  const [fetchError, setFetchError] = useState(false)
 
   useEffect(() => {
     if (!user) return
     getAllSessionsForDashboard(user.uid)
       .then(setData)
-      .catch(() => {})
+      .catch(() => setFetchError(true))
       .finally(() => setLoading(false))
   }, [user])
 
@@ -77,7 +78,14 @@ export default function DashboardPage() {
         </div>
       )}
 
-      {!loading && !hasEnough && (
+      {!loading && fetchError && (
+        <div className="sauna-card text-center py-10 text-red-400">
+          <p className="text-sm">データの取得に失敗しました</p>
+          <p className="text-xs text-gray-500 mt-1">通信環境を確認して再読み込みしてください</p>
+        </div>
+      )}
+
+      {!loading && !fetchError && !hasEnough && (
         <div className="sauna-card text-center py-14 text-gray-500">
           <p className="text-3xl mb-4">📊</p>
           <p className="text-sm font-medium text-gray-300 mb-1">データが不足しています</p>
@@ -86,7 +94,7 @@ export default function DashboardPage() {
         </div>
       )}
 
-      {!loading && hasEnough && data && (
+      {!loading && !fetchError && hasEnough && data && (
         <>
           {/* ベスト条件（フル幅） */}
           {best && (

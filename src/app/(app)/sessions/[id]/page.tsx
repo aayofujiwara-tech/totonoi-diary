@@ -31,18 +31,11 @@ export default function SessionDetailPage() {
   const [showConfirm, setShowConfirm] = useState(false)
 
   useEffect(() => {
-    console.log('[SessionDetail] effect fired — id:', id, 'authLoading:', authLoading, 'uid:', user?.uid ?? 'null')
     if (!id || authLoading) return
     if (!user) { setLoading(false); return }
     getSession(id, user.uid)
-      .then(result => {
-        console.log('[SessionDetail] getSession result:', result ? `found (id=${result.id})` : 'null')
-        setSession(result)
-      })
-      .catch(err => {
-        console.error('[SessionDetail] getSession error:', err?.code, err?.message, err)
-        setFetchError(String(err?.code ?? err?.message ?? err))
-      })
+      .then(setSession)
+      .catch(err => setFetchError(String(err?.code ?? err?.message ?? '取得に失敗しました')))
       .finally(() => setLoading(false))
   }, [id, user, authLoading])
 
@@ -75,7 +68,6 @@ export default function SessionDetailPage() {
     return (
       <div className="px-4 pt-6 text-center text-gray-500 space-y-2">
         <p>記録が見つかりません</p>
-        <p className="text-xs text-gray-600">id: {id} / uid: {user?.uid ?? 'null'}</p>
         {fetchError && <p className="text-xs text-red-400 bg-red-400/10 rounded px-3 py-2">{fetchError}</p>}
         <Link href="/home" className="text-[#D4853A] text-sm mt-4 inline-block">ホームに戻る</Link>
       </div>

@@ -185,8 +185,6 @@ export async function getAllSessionsForDashboard(userId: string): Promise<{
 // ── Record保存（セッション + セット + コンディションを一括書き込み）──
 
 export async function saveRecord(userId: string, data: RecordFormData): Promise<string> {
-  console.log('[saveRecord] start — userId:', userId, 'score:', data.totonoilScore, 'sets:', data.sets.length)
-
   let resolvedFacilityId = data.facilityId
 
   if (data.facilityId === '__new__' && data.facilityName) {
@@ -194,13 +192,10 @@ export async function saveRecord(userId: string, data: RecordFormData): Promise<
       name: data.facilityName,
       loyly: false,
     })
-    console.log('[saveRecord] new facility created:', resolvedFacilityId)
   }
 
   const batch = writeBatch(db)
-
   const sessionRef = doc(collection(db, 'sessions'))
-  console.log('[saveRecord] sessionRef.id:', sessionRef.id)
 
   batch.set(sessionRef, {
     userId,
@@ -236,14 +231,7 @@ export async function saveRecord(userId: string, data: RecordFormData): Promise<
     hungerLevel: data.condition.hungerLevel ?? null,
   })
 
-  try {
-    await batch.commit()
-    console.log('[saveRecord] batch committed successfully')
-  } catch (err) {
-    console.error('[saveRecord] batch.commit failed:', err)
-    console.error('[saveRecord] userId was:', userId)
-    throw err
-  }
+  await batch.commit()
 
   return sessionRef.id
 }
@@ -281,15 +269,7 @@ export async function getUserStats(userId: string) {
 // ── 単一セッション取得（sets・condition・facility込み）──────
 
 export async function getSession(sessionId: string, userId: string): Promise<Session | null> {
-  console.log('[getSession] sessionId:', sessionId, 'userId:', userId)
-  let sessionSnap
-  try {
-    sessionSnap = await getDoc(doc(db, 'sessions', sessionId))
-  } catch (err) {
-    console.error('[getSession] getDoc error:', (err as {code?:string})?.code, err)
-    throw err
-  }
-  console.log('[getSession] exists:', sessionSnap.exists())
+  const sessionSnap = await getDoc(doc(db, 'sessions', sessionId))
   if (!sessionSnap.exists()) return null
 
   const session = docToSession(sessionSnap.id, sessionSnap.data())
@@ -299,7 +279,6 @@ export async function getSession(sessionId: string, userId: string): Promise<Ses
     getDocs(query(collection(db, 'sets'), where('userId', '==', userId), where('sessionId', '==', sessionId))),
     getDocs(query(collection(db, 'conditions'), where('userId', '==', userId), where('sessionId', '==', sessionId))),
   ])
-  console.log('[getSession] sets:', setsSnap.size, 'conditions:', condsSnap.size)
 
   const sets = setsSnap.docs
     .map(d => docToSetData(d.id, d.data()))

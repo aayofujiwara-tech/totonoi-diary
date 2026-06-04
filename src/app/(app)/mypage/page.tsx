@@ -14,13 +14,14 @@ export default function MyPage() {
   const { user, loading: authLoading } = useAuth()
   const [stats, setStats] = useState<Stats>({ totalSessions: 0, totalSets: 0, avgScore: 0, perfectSessions: 0 })
   const [loading, setLoading] = useState(true)
+  const [statsError, setStatsError] = useState(false)
 
   useEffect(() => {
     if (authLoading) return
     if (!user) { setLoading(false); return }
     getUserStats(user.uid)
       .then(setStats)
-      .catch(() => {})
+      .catch(() => setStatsError(true))
       .finally(() => setLoading(false))
   }, [user, authLoading])
 
@@ -46,6 +47,9 @@ export default function MyPage() {
 
       {/* 統計グリッド */}
       <h2 className="text-sm font-semibold text-gray-400 mb-3 uppercase tracking-wider">統計</h2>
+      {statsError && (
+        <p className="text-xs text-red-400 bg-red-400/10 rounded-xl px-3 py-2 mb-3">統計の取得に失敗しました</p>
+      )}
       <div className="grid grid-cols-2 gap-3 mb-5">
         {[
           { icon: <Flame className="w-5 h-5 text-[#D4853A]" />, value: loading ? '…' : stats.totalSessions, label: '累計サ活回数' },

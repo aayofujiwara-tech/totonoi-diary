@@ -203,6 +203,7 @@ export default function FacilitiesPage() {
   const [facilities, setFacilities] = useState<Facility[]>([])
   const [sessions, setSessions] = useState<Session[]>([])
   const [loading, setLoading] = useState(true)
+  const [fetchError, setFetchError] = useState(false)
   const [showAdd, setShowAdd] = useState(false)
   const [selected, setSelected] = useState<Facility | null>(null)
   const [facilityToDelete, setFacilityToDelete] = useState<Facility | null>(null)
@@ -223,7 +224,7 @@ export default function FacilitiesPage() {
         map.set(f.id, { count: s.length, avg: Math.round(avg * 10) / 10 })
       })
       setStatsMap(map)
-    }).catch(() => {}).finally(() => setLoading(false))
+    }).catch(() => setFetchError(true)).finally(() => setLoading(false))
   }, [user])
 
   async function handleAddFacility(data: Omit<Facility, 'id' | 'userId' | 'createdAt'>) {
@@ -263,14 +264,18 @@ export default function FacilitiesPage() {
         </div>
       )}
 
-      {!loading && facilities.length === 0 && (
+      {!loading && fetchError && (
+        <p className="text-sm text-red-400 text-center py-8">データの取得に失敗しました。再読み込みしてください。</p>
+      )}
+
+      {!loading && !fetchError && facilities.length === 0 && (
         <div className="text-center py-12 text-gray-500">
           <p className="text-sm">施設が登録されていません</p>
           <p className="text-xs mt-1">「追加」から施設を登録しましょう</p>
         </div>
       )}
 
-      {!loading && (
+      {!loading && !fetchError && (
         <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-3">
           {facilities.map(facility => {
             const stats = statsMap.get(facility.id) ?? { count: 0, avg: 0 }

@@ -13,6 +13,16 @@ type Props = {
 
 const restTypeLabels = { outdoor: '屋外', indoor: '室内', none: 'なし' } as const
 
+function clamp(value: number, min: number, max: number) {
+  return Math.max(min, Math.min(max, value))
+}
+
+function parseAndClamp(raw: string, min: number, max: number): number | undefined {
+  if (!raw) return undefined
+  const n = parseInt(raw, 10)
+  return isNaN(n) ? undefined : clamp(n, min, max)
+}
+
 export default function SetInput({ index, data, onChange, onRemove, canRemove }: Props) {
   function update<K extends keyof SetFormItem>(key: K, value: SetFormItem[K]) {
     onChange({ ...data, [key]: value })
@@ -39,33 +49,61 @@ export default function SetInput({ index, data, onChange, onRemove, canRemove }:
           <label className="label-text flex items-center gap-1">
             <Thermometer className="w-3 h-3 text-orange-400" />サウナ（分）
           </label>
-          <input type="number" className="input-dark text-center" placeholder="10" min={1} max={30}
+          <input
+            type="number" className="input-dark text-center" placeholder="10"
+            min={1} max={30}
             value={data.saunaMinutes ?? ''}
-            onChange={e => update('saunaMinutes', e.target.value ? parseInt(e.target.value) : undefined)} />
+            onChange={e => update('saunaMinutes', parseAndClamp(e.target.value, 1, 30))}
+            onBlur={e => {
+              const v = parseAndClamp(e.target.value, 1, 30)
+              if (v !== undefined) update('saunaMinutes', v)
+            }}
+          />
         </div>
         <div>
           <label className="label-text flex items-center gap-1">
             <Droplets className="w-3 h-3 text-blue-400" />水風呂（秒）
           </label>
-          <input type="number" className="input-dark text-center" placeholder="60" min={10} max={300} step={5}
+          <input
+            type="number" className="input-dark text-center" placeholder="60"
+            min={10} max={600} step={5}
             value={data.coldBathSeconds ?? ''}
-            onChange={e => update('coldBathSeconds', e.target.value ? parseInt(e.target.value) : undefined)} />
+            onChange={e => update('coldBathSeconds', parseAndClamp(e.target.value, 10, 600))}
+            onBlur={e => {
+              const v = parseAndClamp(e.target.value, 10, 600)
+              if (v !== undefined) update('coldBathSeconds', v)
+            }}
+          />
         </div>
         <div>
           <label className="label-text flex items-center gap-1">
             <Thermometer className="w-3 h-3 text-red-400" />室温（℃）
           </label>
-          <input type="number" className="input-dark text-center" placeholder="80" min={60} max={110}
+          <input
+            type="number" className="input-dark text-center" placeholder="80"
+            min={60} max={130}
             value={data.saunaTemp ?? ''}
-            onChange={e => update('saunaTemp', e.target.value ? parseInt(e.target.value) : undefined)} />
+            onChange={e => update('saunaTemp', parseAndClamp(e.target.value, 60, 130))}
+            onBlur={e => {
+              const v = parseAndClamp(e.target.value, 60, 130)
+              if (v !== undefined) update('saunaTemp', v)
+            }}
+          />
         </div>
         <div>
           <label className="label-text flex items-center gap-1">
             <Droplets className="w-3 h-3 text-cyan-300" />水風呂温度（℃）
           </label>
-          <input type="number" className="input-dark text-center" placeholder="16" min={5} max={25}
+          <input
+            type="number" className="input-dark text-center" placeholder="16"
+            min={1} max={30}
             value={data.coldBathTemp ?? ''}
-            onChange={e => update('coldBathTemp', e.target.value ? parseInt(e.target.value) : undefined)} />
+            onChange={e => update('coldBathTemp', parseAndClamp(e.target.value, 1, 30))}
+            onBlur={e => {
+              const v = parseAndClamp(e.target.value, 1, 30)
+              if (v !== undefined) update('coldBathTemp', v)
+            }}
+          />
         </div>
       </div>
 
