@@ -280,8 +280,8 @@ export async function getUserStats(userId: string) {
 
 // ── 単一セッション取得（sets・condition・facility込み）──────
 
-export async function getSession(sessionId: string): Promise<Session | null> {
-  console.log('[getSession] fetching sessionId:', sessionId)
+export async function getSession(sessionId: string, userId: string): Promise<Session | null> {
+  console.log('[getSession] sessionId:', sessionId, 'userId:', userId)
   let sessionSnap
   try {
     sessionSnap = await getDoc(doc(db, 'sessions', sessionId))
@@ -289,14 +289,15 @@ export async function getSession(sessionId: string): Promise<Session | null> {
     console.error('[getSession] getDoc error:', (err as {code?:string})?.code, err)
     throw err
   }
-  console.log('[getSession] exists:', sessionSnap.exists(), 'docId:', sessionSnap.id)
+  console.log('[getSession] exists:', sessionSnap.exists())
   if (!sessionSnap.exists()) return null
 
   const session = docToSession(sessionSnap.id, sessionSnap.data())
 
+  // userId を where 条件に含めることでセキュリティルールのクエリ評価が通る
   const [setsSnap, condsSnap] = await Promise.all([
-    getDocs(query(collection(db, 'sets'), where('sessionId', '==', sessionId))),
-    getDocs(query(collection(db, 'conditions'), where('sessionId', '==', sessionId))),
+    getDocs(query(collection(db, 'sets'), where('userId', '==', userId), where('sessionId', '==', sessionId))),
+    getDocs(query(collection(db, 'conditions'), where('userId', '==', userId), where('sessionId', '==', sessionId))),
   ])
   console.log('[getSession] sets:', setsSnap.size, 'conditions:', condsSnap.size)
 

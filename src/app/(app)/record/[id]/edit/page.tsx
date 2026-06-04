@@ -62,7 +62,7 @@ export default function EditRecordPage() {
 
   useEffect(() => {
     if (!user || !id) return
-    Promise.all([getSession(id), getFacilities(user.uid)])
+    Promise.all([getSession(id, user.uid), getFacilities(user.uid)])
       .then(([session, facs]) => {
         if (session) setForm(sessionToForm(session))
         setFacilities(facs)

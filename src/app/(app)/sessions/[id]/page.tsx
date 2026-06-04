@@ -34,7 +34,7 @@ export default function SessionDetailPage() {
     console.log('[SessionDetail] effect fired — id:', id, 'authLoading:', authLoading, 'uid:', user?.uid ?? 'null')
     if (!id || authLoading) return
     if (!user) { setLoading(false); return }
-    getSession(id)
+    getSession(id, user.uid)
       .then(result => {
         console.log('[SessionDetail] getSession result:', result ? `found (id=${result.id})` : 'null')
         setSession(result)
