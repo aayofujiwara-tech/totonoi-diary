@@ -49,7 +49,13 @@ export default function RecordPage() {
 
   function addSet() {
     if (form.sets.length >= 5) return
-    setForm(f => ({ ...f, sets: [...f.sets, newSet(f.sets.length + 1)] }))
+    setForm(f => {
+      const prev = f.sets[f.sets.length - 1]
+      const next: SetFormItem = prev
+        ? { ...prev, setNumber: f.sets.length + 1 }
+        : newSet(f.sets.length + 1)
+      return { ...f, sets: [...f.sets, next] }
+    })
   }
 
   function removeSet(index: number) {
