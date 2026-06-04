@@ -107,7 +107,7 @@ export default function RecordPage() {
   }
 
   return (
-    <div className="px-4 pt-6 pb-4">
+    <div className="px-4 pt-6 pb-4 md:max-w-[600px] md:mx-auto">
       <div className="flex items-center gap-3 mb-6">
         <button onClick={() => router.back()} className="text-gray-400 hover:text-white transition-colors">
           <ChevronLeft className="w-6 h-6" />

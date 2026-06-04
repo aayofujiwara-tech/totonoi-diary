@@ -4,6 +4,7 @@ import { useEffect } from 'react'
 import { useRouter } from 'next/navigation'
 import { Flame } from 'lucide-react'
 import BottomNav from '@/components/ui/BottomNav'
+import SideNav from '@/components/ui/SideNav'
 import { useAuth } from '@/hooks/useAuth'
 
 export default function AppLayout({ children }: { children: React.ReactNode }) {
@@ -30,11 +31,14 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
   if (!user) return null
 
   return (
-    <>
-      <main className="page-content">
-        {children}
+    <div className="md:flex md:max-w-[1280px] md:mx-auto md:min-h-dvh">
+      <SideNav />
+      <main className="flex-1 min-w-0 page-content md:pb-0">
+        <div className="md:max-w-[800px] md:mx-auto">
+          {children}
+        </div>
       </main>
       <BottomNav />
-    </>
+    </div>
   )
 }

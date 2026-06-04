@@ -271,7 +271,7 @@ export default function FacilitiesPage() {
       )}
 
       {!loading && (
-        <div className="space-y-3">
+        <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-3">
           {facilities.map(facility => {
             const stats = statsMap.get(facility.id) ?? { count: 0, avg: 0 }
             return (

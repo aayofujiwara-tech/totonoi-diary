@@ -35,17 +35,21 @@ body {
   border-radius: 2px;
 }
 
-/* モバイルファースト: アプリ幅 */
+/* アプリ共通コンテナ */
 .app-container {
-  max-width: 430px;
-  margin: 0 auto;
   min-height: 100dvh;
   position: relative;
 }
 
-/* ボトムナビの高さ分パディング */
+/* ボトムナビの高さ分パディング（モバイルのみ） */
 .page-content {
   padding-bottom: 80px;
+}
+
+@media (min-width: 768px) {
+  .page-content {
+    padding-bottom: 0;
+  }
 }
 
 /* カード */

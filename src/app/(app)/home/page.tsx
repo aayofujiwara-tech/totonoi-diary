@@ -122,7 +122,7 @@ export default function HomePage() {
       )}
 
       {!loading && !error && (
-        <div className="space-y-3">
+        <div className="grid md:grid-cols-2 gap-3">
           {recentFive.map(session => (
             <Link key={session.id} href={`/sessions/${session.id}`} className="block">
             <div className="sauna-card hover:border-[#D4853A]/40 transition-colors duration-150">
