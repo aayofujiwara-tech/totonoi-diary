@@ -365,6 +365,12 @@ export async function updateRecord(sessionId: string, userId: string, data: Reco
   await batch.commit()
 }
 
+// ── 施設削除 ───────────────────────────────────────────────
+
+export async function deleteFacility(facilityId: string): Promise<void> {
+  await deleteDoc(doc(db, 'facilities', facilityId))
+}
+
 // ── 記録削除（session + sets + conditions）─────────────────
 
 export async function deleteRecord(sessionId: string): Promise<void> {

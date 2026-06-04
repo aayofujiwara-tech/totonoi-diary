@@ -1,10 +1,10 @@
 'use client'
 
 import { useState, useEffect } from 'react'
-import { Plus, X, MapPin, Flame, ChevronRight } from 'lucide-react'
+import { Plus, X, MapPin, Flame, ChevronRight, Trash2, AlertTriangle } from 'lucide-react'
 import StarRating from '@/components/ui/StarRating'
 import { useAuth } from '@/hooks/useAuth'
-import { getFacilities, addFacility, getAllSessionsForDashboard } from '@/lib/firebase/db'
+import { getFacilities, addFacility, getAllSessionsForDashboard, deleteFacility } from '@/lib/firebase/db'
 import type { Facility, Session } from '@/lib/types'
 
 type FacilityStats = { count: number; avg: number }
@@ -144,6 +144,60 @@ function FacilityDetail({
   )
 }
 
+function DeleteConfirmModal({
+  facility,
+  sessionCount,
+  onClose,
+  onConfirm,
+}: {
+  facility: Facility
+  sessionCount: number
+  onClose: () => void
+  onConfirm: () => Promise<void>
+}) {
+  const [deleting, setDeleting] = useState(false)
+
+  async function handleConfirm() {
+    setDeleting(true)
+    await onConfirm()
+    setDeleting(false)
+  }
+
+  return (
+    <div className="fixed inset-0 bg-black/70 z-50 flex items-center justify-center px-6">
+      <div className="bg-[#1E1E1E] rounded-2xl p-6 w-full max-w-sm border border-[#2E2E2E]">
+        <div className="flex items-center gap-2 mb-3">
+          <Trash2 className="w-5 h-5 text-red-400" />
+          <h3 className="text-lg font-bold text-white">施設を削除しますか？</h3>
+        </div>
+        <p className="text-sm text-gray-300 mb-3">
+          <span className="font-semibold text-white">「{facility.name}」</span> を削除します。
+        </p>
+        {sessionCount > 0 && (
+          <div className="flex items-start gap-2 bg-yellow-900/20 border border-yellow-700/40 rounded-xl px-3 py-2.5 mb-4">
+            <AlertTriangle className="w-4 h-4 text-yellow-400 flex-shrink-0 mt-0.5" />
+            <p className="text-xs text-yellow-300">
+              この施設には <span className="font-bold">{sessionCount}件</span> のサ活記録があります。
+              施設を削除してもサ活記録は残りますが、施設名が表示されなくなります。
+            </p>
+          </div>
+        )}
+        <p className="text-xs text-gray-500 mb-5">この操作は取り消せません。</p>
+        <div className="flex gap-3">
+          <button onClick={onClose}
+            className="flex-1 py-3 rounded-xl border border-[#2E2E2E] text-gray-300 text-sm font-semibold">
+            キャンセル
+          </button>
+          <button onClick={handleConfirm} disabled={deleting}
+            className="flex-1 py-3 rounded-xl bg-red-600 text-white text-sm font-semibold disabled:opacity-50">
+            {deleting ? '削除中...' : '削除する'}
+          </button>
+        </div>
+      </div>
+    </div>
+  )
+}
+
 export default function FacilitiesPage() {
   const { user } = useAuth()
   const [facilities, setFacilities] = useState<Facility[]>([])
@@ -151,6 +205,7 @@ export default function FacilitiesPage() {
   const [loading, setLoading] = useState(true)
   const [showAdd, setShowAdd] = useState(false)
   const [selected, setSelected] = useState<Facility | null>(null)
+  const [facilityToDelete, setFacilityToDelete] = useState<Facility | null>(null)
   const [statsMap, setStatsMap] = useState<Map<string, FacilityStats>>(new Map())
 
   useEffect(() => {
@@ -177,6 +232,14 @@ export default function FacilitiesPage() {
     const newFac: Facility = { ...data, id, userId: user.uid, createdAt: new Date().toISOString() }
     setFacilities(prev => [newFac, ...prev])
     setStatsMap(prev => new Map(prev).set(id, { count: 0, avg: 0 }))
+  }
+
+  async function handleDeleteFacility() {
+    if (!facilityToDelete) return
+    await deleteFacility(facilityToDelete.id)
+    setFacilities(prev => prev.filter(f => f.id !== facilityToDelete.id))
+    setStatsMap(prev => { const m = new Map(prev); m.delete(facilityToDelete.id); return m })
+    setFacilityToDelete(null)
   }
 
   return (
@@ -212,10 +275,13 @@ export default function FacilitiesPage() {
           {facilities.map(facility => {
             const stats = statsMap.get(facility.id) ?? { count: 0, avg: 0 }
             return (
-              <button key={facility.id} onClick={() => setSelected(facility)}
-                className="sauna-card w-full text-left hover:border-[#D4853A]/40 transition-colors duration-150">
+              <div key={facility.id} className="sauna-card hover:border-[#D4853A]/40 transition-colors duration-150">
                 <div className="flex items-start justify-between">
-                  <div className="flex-1 min-w-0">
+                  {/* カード本体（詳細表示） */}
+                  <button
+                    className="flex-1 min-w-0 text-left"
+                    onClick={() => setSelected(facility)}
+                  >
                     <div className="flex items-center gap-2 flex-wrap">
                       <h3 className="font-semibold text-white text-sm">{facility.name}</h3>
                       {facility.loyly && (
@@ -230,9 +296,26 @@ export default function FacilitiesPage() {
                         <span className="truncate">{facility.address}</span>
                       </p>
                     )}
+                  </button>
+                  {/* アクションボタン */}
+                  <div className="flex items-center gap-1 ml-2 flex-shrink-0">
+                    <button
+                      onClick={() => setFacilityToDelete(facility)}
+                      className="p-1.5 text-gray-500 hover:text-red-400 transition-colors rounded-lg hover:bg-red-900/20"
+                      aria-label="施設を削除"
+                    >
+                      <Trash2 className="w-4 h-4" />
+                    </button>
+                    <button
+                      onClick={() => setSelected(facility)}
+                      className="p-1.5 text-gray-500 hover:text-gray-300 transition-colors"
+                      aria-label="詳細を表示"
+                    >
+                      <ChevronRight className="w-4 h-4" />
+                    </button>
                   </div>
-                  <ChevronRight className="w-4 h-4 text-gray-500 flex-shrink-0 mt-0.5" />
                 </div>
+
                 <div className="flex gap-4 mt-2 text-xs text-gray-400">
                   <span>{stats.count}回訪問</span>
                   {stats.avg > 0 && (
@@ -242,7 +325,7 @@ export default function FacilitiesPage() {
                     </span>
                   )}
                 </div>
-              </button>
+              </div>
             )
           })}
         </div>
@@ -253,6 +336,14 @@ export default function FacilitiesPage() {
       )}
       {selected && (
         <FacilityDetail facility={selected} sessions={sessions} onClose={() => setSelected(null)} />
+      )}
+      {facilityToDelete && (
+        <DeleteConfirmModal
+          facility={facilityToDelete}
+          sessionCount={sessions.filter(s => s.facilityId === facilityToDelete.id).length}
+          onClose={() => setFacilityToDelete(null)}
+          onConfirm={handleDeleteFacility}
+        />
       )}
     </div>
   )
