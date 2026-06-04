@@ -23,16 +23,20 @@ function formatDateTime(iso: string) {
 export default function SessionDetailPage() {
   const router = useRouter()
   const { id } = useParams<{ id: string }>()
-  const { user } = useAuth()
+  const { user, loading: authLoading } = useAuth()
   const [session, setSession] = useState<Session | null>(null)
   const [loading, setLoading] = useState(true)
   const [deleting, setDeleting] = useState(false)
   const [showConfirm, setShowConfirm] = useState(false)
 
   useEffect(() => {
-    if (!id) return
-    getSession(id).then(setSession).catch(console.error).finally(() => setLoading(false))
-  }, [id])
+    if (!id || authLoading) return
+    if (!user) { setLoading(false); return }
+    getSession(id)
+      .then(setSession)
+      .catch(err => console.error('[getSession]', err))
+      .finally(() => setLoading(false))
+  }, [id, user, authLoading])
 
   async function handleDelete() {
     setDeleting(true)
