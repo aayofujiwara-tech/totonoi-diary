@@ -124,7 +124,8 @@ export default function HomePage() {
       {!loading && !error && (
         <div className="space-y-3">
           {recentFive.map(session => (
-            <div key={session.id} className="sauna-card">
+            <Link key={session.id} href={`/sessions/${session.id}`} className="block">
+            <div className="sauna-card hover:border-[#D4853A]/40 transition-colors duration-150">
               <div className="flex items-start justify-between mb-2">
                 <div>
                   <p className="font-semibold text-white text-sm">
@@ -167,6 +168,7 @@ export default function HomePage() {
                 </p>
               )}
             </div>
+            </Link>
           ))}
         </div>
       )}

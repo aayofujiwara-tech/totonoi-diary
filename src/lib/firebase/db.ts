@@ -10,6 +10,8 @@ import {
   limit,
   serverTimestamp,
   writeBatch,
+  updateDoc,
+  deleteDoc,
   Timestamp,
   type DocumentData,
 } from 'firebase/firestore'
@@ -274,4 +276,96 @@ export async function getUserStats(userId: string) {
   )
 
   return { totalSessions, totalSets, avgScore, perfectSessions }
+}
+
+// ── 単一セッション取得（sets・condition・facility込み）──────
+
+export async function getSession(sessionId: string): Promise<Session | null> {
+  const sessionSnap = await getDoc(doc(db, 'sessions', sessionId))
+  if (!sessionSnap.exists()) return null
+
+  const session = docToSession(sessionSnap.id, sessionSnap.data())
+
+  const [setsSnap, condsSnap] = await Promise.all([
+    getDocs(query(collection(db, 'sets'), where('sessionId', '==', sessionId))),
+    getDocs(query(collection(db, 'conditions'), where('sessionId', '==', sessionId))),
+  ])
+
+  const sets = setsSnap.docs
+    .map(d => docToSetData(d.id, d.data()))
+    .sort((a, b) => a.setNumber - b.setNumber)
+
+  const condition = condsSnap.docs.length > 0
+    ? docToCondition(condsSnap.docs[0].id, condsSnap.docs[0].data())
+    : undefined
+
+  let facility: Facility | undefined
+  if (session.facilityId) {
+    const fSnap = await getDoc(doc(db, 'facilities', session.facilityId))
+    if (fSnap.exists()) facility = docToFacility(fSnap.id, fSnap.data())
+  }
+
+  return { ...session, sets, condition, facility }
+}
+
+// ── 記録更新（session + sets全入れ替え + condition更新）──────
+
+export async function updateRecord(sessionId: string, userId: string, data: RecordFormData): Promise<void> {
+  let resolvedFacilityId = data.facilityId
+  if (data.facilityId === '__new__' && data.facilityName) {
+    resolvedFacilityId = await addFacility(userId, { name: data.facilityName, loyly: false })
+  }
+
+  const [existingSetsSnap, existingCondsSnap] = await Promise.all([
+    getDocs(query(collection(db, 'sets'), where('sessionId', '==', sessionId))),
+    getDocs(query(collection(db, 'conditions'), where('sessionId', '==', sessionId))),
+  ])
+
+  const batch = writeBatch(db)
+
+  batch.update(doc(db, 'sessions', sessionId), {
+    facilityId: resolvedFacilityId ?? null,
+    visitedAt: data.visitedAt,
+    totonoilScore: data.totonoilScore,
+    memo: data.memo ?? '',
+  })
+
+  existingSetsSnap.docs.forEach(d => batch.delete(d.ref))
+  data.sets.forEach(s => {
+    batch.set(doc(collection(db, 'sets')), {
+      userId, sessionId,
+      setNumber: s.setNumber,
+      saunaMinutes: s.saunaMinutes ?? null,
+      saunaTemp: s.saunaTemp ?? null,
+      coldBathSeconds: s.coldBathSeconds ?? null,
+      coldBathTemp: s.coldBathTemp ?? null,
+      loyly: s.loyly,
+      restType: s.restType,
+    })
+  })
+
+  existingCondsSnap.docs.forEach(d => batch.delete(d.ref))
+  batch.set(doc(collection(db, 'conditions')), {
+    userId, sessionId,
+    sleepHours: data.condition.sleepHours ?? null,
+    physicalCondition: data.condition.physicalCondition ?? null,
+    hungerLevel: data.condition.hungerLevel ?? null,
+  })
+
+  await batch.commit()
+}
+
+// ── 記録削除（session + sets + conditions）─────────────────
+
+export async function deleteRecord(sessionId: string): Promise<void> {
+  const [setsSnap, condsSnap] = await Promise.all([
+    getDocs(query(collection(db, 'sets'), where('sessionId', '==', sessionId))),
+    getDocs(query(collection(db, 'conditions'), where('sessionId', '==', sessionId))),
+  ])
+
+  const batch = writeBatch(db)
+  setsSnap.docs.forEach(d => batch.delete(d.ref))
+  condsSnap.docs.forEach(d => batch.delete(d.ref))
+  batch.delete(doc(db, 'sessions', sessionId))
+  await batch.commit()
 }
