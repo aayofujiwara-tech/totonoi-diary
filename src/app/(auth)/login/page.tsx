@@ -3,7 +3,7 @@
 import { useState } from 'react'
 import Link from 'next/link'
 import { useRouter } from 'next/navigation'
-import { createClient } from '@/lib/supabase/client'
+import { signIn } from '@/lib/firebase/auth'
 import { Flame } from 'lucide-react'
 
 export default function LoginPage() {
@@ -17,27 +17,25 @@ export default function LoginPage() {
     e.preventDefault()
     setLoading(true)
     setError('')
-
-    // TODO: Supabase接続 - 実際の認証処理
-    const supabase = createClient()
-    const { error } = await supabase.auth.signInWithPassword({ email, password })
-
-    if (error) {
-      setError('メールアドレスかパスワードが正しくありません')
-    } else {
+    try {
+      await signIn(email, password)
       router.push('/home')
+    } catch (err: unknown) {
+      const code = (err as { code?: string }).code ?? ''
+      if (code === 'auth/invalid-credential' || code === 'auth/wrong-password' || code === 'auth/user-not-found') {
+        setError('メールアドレスかパスワードが正しくありません')
+      } else if (code === 'auth/too-many-requests') {
+        setError('試行回数が多すぎます。しばらくしてから再試行してください')
+      } else {
+        setError('ログインに失敗しました。しばらくしてから再試行してください')
+      }
+    } finally {
+      setLoading(false)
     }
-    setLoading(false)
-  }
-
-  function handleDemoLogin() {
-    // デモ用: Supabase未接続時にホームへ直接移動
-    router.push('/home')
   }
 
   return (
     <div className="min-h-dvh flex flex-col items-center justify-center px-6 py-12">
-      {/* ロゴ */}
       <div className="flex flex-col items-center mb-10">
         <div className="w-16 h-16 bg-[#D4853A]/20 rounded-2xl flex items-center justify-center mb-4">
           <Flame className="w-8 h-8 text-[#D4853A]" />
@@ -46,7 +44,6 @@ export default function LoginPage() {
         <p className="text-gray-400 text-sm mt-1">サウナととのい最適化アプリ</p>
       </div>
 
-      {/* フォーム */}
       <form onSubmit={handleLogin} className="w-full max-w-sm space-y-4">
         <div>
           <label className="label-text">メールアドレス</label>
@@ -79,16 +76,6 @@ export default function LoginPage() {
           {loading ? 'ログイン中...' : 'ログイン'}
         </button>
       </form>
-
-      {/* デモボタン */}
-      <div className="w-full max-w-sm mt-3">
-        <button
-          onClick={handleDemoLogin}
-          className="btn-outline w-full text-sm"
-        >
-          デモで試す（Supabase不要）
-        </button>
-      </div>
 
       <p className="mt-6 text-gray-400 text-sm">
         アカウントをお持ちでない方は{' '}

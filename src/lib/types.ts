@@ -1,52 +1,52 @@
 export type Facility = {
   id: string
-  user_id: string
+  userId: string
   name: string
   address?: string
   loyly: boolean
   notes?: string
-  created_at: string
+  createdAt: string
 }
 
 export type Session = {
   id: string
-  user_id: string
-  facility_id?: string
-  visited_at: string
-  totonoil_score: number
+  userId: string
+  facilityId?: string
+  visitedAt: string
+  totonoilScore: number
   memo?: string
-  created_at: string
+  createdAt: string
   facility?: Facility
-  sets?: Set[]
+  sets?: SetData[]
   condition?: Condition
 }
 
-export type Set = {
+export type SetData = {
   id: string
-  session_id: string
-  set_number: number
-  sauna_minutes?: number
-  cold_bath_seconds?: number
+  sessionId: string
+  setNumber: number
+  saunaMinutes?: number
+  coldBathSeconds?: number
   loyly: boolean
-  rest_type: 'outdoor' | 'indoor' | 'none'
+  restType: 'outdoor' | 'indoor' | 'none'
 }
 
 export type Condition = {
   id: string
-  session_id: string
-  sleep_hours?: number
-  physical_condition?: number
-  hunger_level?: 'hungry' | 'normal' | 'full'
+  sessionId: string
+  sleepHours?: number
+  physicalCondition?: number
+  hungerLevel?: 'hungry' | 'normal' | 'full'
 }
 
-export type SetInput = Omit<Set, 'id' | 'session_id'>
+export type SetFormItem = Omit<SetData, 'id' | 'sessionId'>
 
 export type RecordFormData = {
-  facility_id?: string
-  facility_name?: string
-  visited_at: string
-  sets: SetInput[]
-  condition: Omit<Condition, 'id' | 'session_id'>
-  totonoil_score: number
+  facilityId?: string
+  facilityName?: string
+  visitedAt: string
+  sets: SetFormItem[]
+  condition: Omit<Condition, 'id' | 'sessionId'>
+  totonoilScore: number
   memo?: string
 }

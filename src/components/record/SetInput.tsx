@@ -1,24 +1,20 @@
 'use client'
 
 import { Trash2, Thermometer, Droplets } from 'lucide-react'
-import type { SetInput as SetInputType } from '@/lib/types'
+import type { SetFormItem } from '@/lib/types'
 
 type Props = {
   index: number
-  data: SetInputType
-  onChange: (data: SetInputType) => void
+  data: SetFormItem
+  onChange: (data: SetFormItem) => void
   onRemove: () => void
   canRemove: boolean
 }
 
-const restTypeLabels = {
-  outdoor: '屋外',
-  indoor: '室内',
-  none: 'なし',
-} as const
+const restTypeLabels = { outdoor: '屋外', indoor: '室内', none: 'なし' } as const
 
 export default function SetInput({ index, data, onChange, onRemove, canRemove }: Props) {
-  function update<K extends keyof SetInputType>(key: K, value: SetInputType[K]) {
+  function update<K extends keyof SetFormItem>(key: K, value: SetFormItem[K]) {
     onChange({ ...data, [key]: value })
   }
 
@@ -32,88 +28,45 @@ export default function SetInput({ index, data, onChange, onRemove, canRemove }:
           <span className="text-sm font-semibold text-white">セット{index + 1}</span>
         </div>
         {canRemove && (
-          <button
-            type="button"
-            onClick={onRemove}
-            className="text-red-400 hover:text-red-300 transition-colors"
-            aria-label="セットを削除"
-          >
+          <button type="button" onClick={onRemove} className="text-red-400 hover:text-red-300 transition-colors" aria-label="セットを削除">
             <Trash2 className="w-4 h-4" />
           </button>
         )}
       </div>
 
       <div className="grid grid-cols-2 gap-3">
-        {/* サウナ時間 */}
         <div>
           <label className="label-text flex items-center gap-1">
-            <Thermometer className="w-3 h-3 text-orange-400" />
-            サウナ（分）
+            <Thermometer className="w-3 h-3 text-orange-400" />サウナ（分）
           </label>
-          <input
-            type="number"
-            className="input-dark text-center"
-            placeholder="10"
-            min={1}
-            max={30}
-            value={data.sauna_minutes ?? ''}
-            onChange={e => update('sauna_minutes', e.target.value ? parseInt(e.target.value) : undefined)}
-          />
+          <input type="number" className="input-dark text-center" placeholder="10" min={1} max={30}
+            value={data.saunaMinutes ?? ''}
+            onChange={e => update('saunaMinutes', e.target.value ? parseInt(e.target.value) : undefined)} />
         </div>
-
-        {/* 水風呂時間 */}
         <div>
           <label className="label-text flex items-center gap-1">
-            <Droplets className="w-3 h-3 text-blue-400" />
-            水風呂（秒）
+            <Droplets className="w-3 h-3 text-blue-400" />水風呂（秒）
           </label>
-          <input
-            type="number"
-            className="input-dark text-center"
-            placeholder="60"
-            min={10}
-            max={300}
-            step={5}
-            value={data.cold_bath_seconds ?? ''}
-            onChange={e => update('cold_bath_seconds', e.target.value ? parseInt(e.target.value) : undefined)}
-          />
+          <input type="number" className="input-dark text-center" placeholder="60" min={10} max={300} step={5}
+            value={data.coldBathSeconds ?? ''}
+            onChange={e => update('coldBathSeconds', e.target.value ? parseInt(e.target.value) : undefined)} />
         </div>
       </div>
 
-      {/* löyly */}
       <div className="flex items-center justify-between mt-3 py-2">
         <span className="text-sm text-gray-300">löyly（ロウリュ）あり</span>
-        <button
-          type="button"
-          onClick={() => update('loyly', !data.loyly)}
-          className={`relative w-12 h-6 rounded-full transition-colors duration-200 ${
-            data.loyly ? 'bg-[#D4853A]' : 'bg-[#3E3E3E]'
-          }`}
-          aria-label="löylyトグル"
-        >
-          <span
-            className={`absolute top-0.5 left-0.5 w-5 h-5 bg-white rounded-full shadow-sm transition-transform duration-200 ${
-              data.loyly ? 'translate-x-6' : 'translate-x-0'
-            }`}
-          />
+        <button type="button" onClick={() => update('loyly', !data.loyly)}
+          className={`relative w-12 h-6 rounded-full transition-colors duration-200 ${data.loyly ? 'bg-[#D4853A]' : 'bg-[#3E3E3E]'}`}>
+          <span className={`absolute top-0.5 left-0.5 w-5 h-5 bg-white rounded-full shadow-sm transition-transform duration-200 ${data.loyly ? 'translate-x-6' : 'translate-x-0'}`} />
         </button>
       </div>
 
-      {/* 休憩タイプ */}
       <div className="mt-2">
         <label className="label-text">外気浴スペース</label>
         <div className="flex gap-2">
           {(['outdoor', 'indoor', 'none'] as const).map(type => (
-            <button
-              key={type}
-              type="button"
-              onClick={() => update('rest_type', type)}
-              className={`flex-1 py-2 rounded-xl text-sm font-medium transition-colors duration-150 ${
-                data.rest_type === type
-                  ? 'bg-[#D4853A] text-white'
-                  : 'bg-[#1E1E1E] text-gray-400 border border-[#2E2E2E]'
-              }`}
-            >
+            <button key={type} type="button" onClick={() => update('restType', type)}
+              className={`flex-1 py-2 rounded-xl text-sm font-medium transition-colors duration-150 ${data.restType === type ? 'bg-[#D4853A] text-white' : 'bg-[#1E1E1E] text-gray-400 border border-[#2E2E2E]'}`}>
               {restTypeLabels[type]}
             </button>
           ))}

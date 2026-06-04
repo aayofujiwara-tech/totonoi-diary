@@ -1,0 +1,41 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    match /facilities/{facilityId} {
+      allow read, write: if request.auth != null
+        && request.auth.uid == resource.data.userId;
+      allow create: if request.auth != null
+        && request.auth.uid == request.resource.data.userId;
+    }
+
+    match /sessions/{sessionId} {
+      allow read, write: if request.auth != null
+        && request.auth.uid == resource.data.userId;
+      allow create: if request.auth != null
+        && request.auth.uid == request.resource.data.userId;
+    }
+
+    match /sets/{setId} {
+      allow read, write: if request.auth != null
+        && request.auth.uid == get(
+            /databases/$(database)/documents/sessions/$(resource.data.sessionId)
+          ).data.userId;
+      allow create: if request.auth != null
+        && request.auth.uid == get(
+            /databases/$(database)/documents/sessions/$(request.resource.data.sessionId)
+          ).data.userId;
+    }
+
+    match /conditions/{conditionId} {
+      allow read, write: if request.auth != null
+        && request.auth.uid == get(
+            /databases/$(database)/documents/sessions/$(resource.data.sessionId)
+          ).data.userId;
+      allow create: if request.auth != null
+        && request.auth.uid == get(
+            /databases/$(database)/documents/sessions/$(request.resource.data.sessionId)
+          ).data.userId;
+    }
+  }
+}

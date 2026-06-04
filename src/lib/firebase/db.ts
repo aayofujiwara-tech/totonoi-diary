@@ -1,0 +1,261 @@
+import {
+  collection,
+  doc,
+  addDoc,
+  getDoc,
+  getDocs,
+  query,
+  where,
+  orderBy,
+  limit,
+  serverTimestamp,
+  writeBatch,
+  Timestamp,
+  type DocumentData,
+} from 'firebase/firestore'
+import { db } from './client'
+import type { Facility, Session, SetData, Condition, RecordFormData } from '../types'
+
+// ── ヘルパー ──────────────────────────────────────────────
+
+function toDate(val: unknown): string {
+  if (!val) return new Date().toISOString()
+  if (val instanceof Timestamp) return val.toDate().toISOString()
+  if (typeof val === 'string') return val
+  return new Date().toISOString()
+}
+
+function docToFacility(id: string, d: DocumentData): Facility {
+  return {
+    id,
+    userId: d.userId,
+    name: d.name,
+    address: d.address,
+    loyly: d.loyly ?? false,
+    notes: d.notes,
+    createdAt: toDate(d.createdAt),
+  }
+}
+
+function docToSession(id: string, d: DocumentData): Session {
+  return {
+    id,
+    userId: d.userId,
+    facilityId: d.facilityId,
+    visitedAt: toDate(d.visitedAt),
+    totonoilScore: d.totonoilScore ?? 0,
+    memo: d.memo,
+    createdAt: toDate(d.createdAt),
+  }
+}
+
+function docToSetData(id: string, d: DocumentData): SetData {
+  return {
+    id,
+    sessionId: d.sessionId,
+    setNumber: d.setNumber,
+    saunaMinutes: d.saunaMinutes,
+    coldBathSeconds: d.coldBathSeconds,
+    loyly: d.loyly ?? false,
+    restType: d.restType ?? 'none',
+  }
+}
+
+function docToCondition(id: string, d: DocumentData): Condition {
+  return {
+    id,
+    sessionId: d.sessionId,
+    sleepHours: d.sleepHours,
+    physicalCondition: d.physicalCondition,
+    hungerLevel: d.hungerLevel,
+  }
+}
+
+// ── Facilities ────────────────────────────────────────────
+
+export async function getFacilities(userId: string): Promise<Facility[]> {
+  const q = query(
+    collection(db, 'facilities'),
+    where('userId', '==', userId),
+    orderBy('createdAt', 'desc')
+  )
+  const snap = await getDocs(q)
+  return snap.docs.map(d => docToFacility(d.id, d.data()))
+}
+
+export async function addFacility(
+  userId: string,
+  data: Omit<Facility, 'id' | 'userId' | 'createdAt'>
+): Promise<string> {
+  const ref = await addDoc(collection(db, 'facilities'), {
+    userId,
+    name: data.name,
+    address: data.address ?? '',
+    loyly: data.loyly,
+    notes: data.notes ?? '',
+    createdAt: serverTimestamp(),
+  })
+  return ref.id
+}
+
+// ── Sessions ──────────────────────────────────────────────
+
+export async function getRecentSessions(userId: string, count = 5): Promise<Session[]> {
+  const q = query(
+    collection(db, 'sessions'),
+    where('userId', '==', userId),
+    orderBy('visitedAt', 'desc'),
+    limit(count)
+  )
+  const snap = await getDocs(q)
+  const sessions = snap.docs.map(d => docToSession(d.id, d.data()))
+
+  // facilityを結合
+  const facilityIds = [...new Set(sessions.map(s => s.facilityId).filter(Boolean))] as string[]
+  const facilityMap = new Map<string, Facility>()
+  await Promise.all(
+    facilityIds.map(async fid => {
+      const fSnap = await getDoc(doc(db, 'facilities', fid))
+      if (fSnap.exists()) facilityMap.set(fid, docToFacility(fSnap.id, fSnap.data()))
+    })
+  )
+
+  return sessions.map(s => ({
+    ...s,
+    facility: s.facilityId ? facilityMap.get(s.facilityId) : undefined,
+  }))
+}
+
+export async function getAllSessionsForDashboard(userId: string): Promise<{
+  sessions: Session[]
+  sets: SetData[]
+  conditions: Condition[]
+  facilities: Facility[]
+}> {
+  // sessions
+  const sQ = query(
+    collection(db, 'sessions'),
+    where('userId', '==', userId),
+    orderBy('visitedAt', 'asc')
+  )
+  const sSnap = await getDocs(sQ)
+  const sessions = sSnap.docs.map(d => docToSession(d.id, d.data()))
+
+  if (sessions.length === 0) {
+    return { sessions: [], sets: [], conditions: [], facilities: [] }
+  }
+
+  const sessionIds = sessions.map(s => s.id)
+
+  // sets（Firestoreのin制限: 30件まで。個人アプリなので許容）
+  const chunks: string[][] = []
+  for (let i = 0; i < sessionIds.length; i += 30) chunks.push(sessionIds.slice(i, i + 30))
+
+  const sets: SetData[] = []
+  const conditions: Condition[] = []
+
+  await Promise.all(
+    chunks.map(async chunk => {
+      const [setSnap, condSnap] = await Promise.all([
+        getDocs(query(collection(db, 'sets'), where('sessionId', 'in', chunk))),
+        getDocs(query(collection(db, 'conditions'), where('sessionId', 'in', chunk))),
+      ])
+      setSnap.docs.forEach(d => sets.push(docToSetData(d.id, d.data())))
+      condSnap.docs.forEach(d => conditions.push(docToCondition(d.id, d.data())))
+    })
+  )
+
+  // facilities
+  const facilityIds = [...new Set(sessions.map(s => s.facilityId).filter(Boolean))] as string[]
+  const facilities: Facility[] = []
+  await Promise.all(
+    facilityIds.map(async fid => {
+      const fSnap = await getDoc(doc(db, 'facilities', fid))
+      if (fSnap.exists()) facilities.push(docToFacility(fSnap.id, fSnap.data()))
+    })
+  )
+
+  return { sessions, sets, conditions, facilities }
+}
+
+// ── Record保存（セッション + セット + コンディションを一括書き込み）──
+
+export async function saveRecord(userId: string, data: RecordFormData): Promise<string> {
+  let resolvedFacilityId = data.facilityId
+
+  // 新規施設の場合は先にfacilitiesに追加
+  if (data.facilityId === '__new__' && data.facilityName) {
+    resolvedFacilityId = await addFacility(userId, {
+      name: data.facilityName,
+      loyly: false,
+    })
+  }
+
+  const batch = writeBatch(db)
+
+  // session
+  const sessionRef = doc(collection(db, 'sessions'))
+  batch.set(sessionRef, {
+    userId,
+    facilityId: resolvedFacilityId ?? null,
+    visitedAt: data.visitedAt,
+    totonoilScore: data.totonoilScore,
+    memo: data.memo ?? '',
+    createdAt: serverTimestamp(),
+  })
+
+  // sets
+  data.sets.forEach(s => {
+    const setRef = doc(collection(db, 'sets'))
+    batch.set(setRef, {
+      sessionId: sessionRef.id,
+      setNumber: s.setNumber,
+      saunaMinutes: s.saunaMinutes ?? null,
+      coldBathSeconds: s.coldBathSeconds ?? null,
+      loyly: s.loyly,
+      restType: s.restType,
+    })
+  })
+
+  // condition
+  const condRef = doc(collection(db, 'conditions'))
+  batch.set(condRef, {
+    sessionId: sessionRef.id,
+    sleepHours: data.condition.sleepHours ?? null,
+    physicalCondition: data.condition.physicalCondition ?? null,
+    hungerLevel: data.condition.hungerLevel ?? null,
+  })
+
+  await batch.commit()
+  return sessionRef.id
+}
+
+// ── Stats ─────────────────────────────────────────────────
+
+export async function getUserStats(userId: string) {
+  const sQ = query(collection(db, 'sessions'), where('userId', '==', userId))
+  const sSnap = await getDocs(sQ)
+  const sessions = sSnap.docs.map(d => d.data())
+
+  if (sessions.length === 0) {
+    return { totalSessions: 0, totalSets: 0, avgScore: 0, perfectSessions: 0 }
+  }
+
+  const totalSessions = sessions.length
+  const avgScore = sessions.reduce((s, d) => s + (d.totonoilScore ?? 0), 0) / totalSessions
+  const perfectSessions = sessions.filter(d => d.totonoilScore === 5).length
+
+  const sessionIds = sSnap.docs.map(d => d.id)
+  const chunks: string[][] = []
+  for (let i = 0; i < sessionIds.length; i += 30) chunks.push(sessionIds.slice(i, i + 30))
+
+  let totalSets = 0
+  await Promise.all(
+    chunks.map(async chunk => {
+      const setSnap = await getDocs(query(collection(db, 'sets'), where('sessionId', 'in', chunk)))
+      totalSets += setSnap.size
+    })
+  )
+
+  return { totalSessions, totalSets, avgScore, perfectSessions }
+}

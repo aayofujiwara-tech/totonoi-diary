@@ -3,7 +3,7 @@
 import { useState } from 'react'
 import Link from 'next/link'
 import { useRouter } from 'next/navigation'
-import { createClient } from '@/lib/supabase/client'
+import { signUp } from '@/lib/firebase/auth'
 import { Flame } from 'lucide-react'
 
 export default function SignupPage() {
@@ -17,27 +17,25 @@ export default function SignupPage() {
 
   async function handleSignup(e: React.FormEvent) {
     e.preventDefault()
-    if (password !== confirm) {
-      setError('パスワードが一致しません')
-      return
-    }
-    if (password.length < 8) {
-      setError('パスワードは8文字以上で設定してください')
-      return
-    }
+    if (password !== confirm) { setError('パスワードが一致しません'); return }
+    if (password.length < 8) { setError('パスワードは8文字以上で設定してください'); return }
     setLoading(true)
     setError('')
-
-    // TODO: Supabase接続 - 実際の新規登録処理
-    const supabase = createClient()
-    const { error } = await supabase.auth.signUp({ email, password })
-
-    if (error) {
-      setError('登録に失敗しました: ' + error.message)
-    } else {
+    try {
+      await signUp(email, password)
       setDone(true)
+    } catch (err: unknown) {
+      const code = (err as { code?: string }).code ?? ''
+      if (code === 'auth/email-already-in-use') {
+        setError('このメールアドレスはすでに使用されています')
+      } else if (code === 'auth/weak-password') {
+        setError('パスワードが弱すぎます。6文字以上にしてください')
+      } else {
+        setError('登録に失敗しました。しばらくしてから再試行してください')
+      }
+    } finally {
+      setLoading(false)
     }
-    setLoading(false)
   }
 
   if (done) {
@@ -46,13 +44,16 @@ export default function SignupPage() {
         <div className="w-16 h-16 bg-green-500/20 rounded-2xl flex items-center justify-center mb-4">
           <span className="text-3xl">✉️</span>
         </div>
-        <h2 className="text-2xl font-bold mb-2">確認メールを送りました</h2>
+        <h2 className="text-2xl font-bold mb-2">登録完了！</h2>
         <p className="text-gray-400 text-sm mb-6">
-          {email} に届いたリンクをクリックしてアカウントを有効化してください。
+          {email} でアカウントが作成されました。
         </p>
-        <Link href="/login" className="text-[#D4853A] underline">
-          ログインページへ戻る
-        </Link>
+        <button
+          className="btn-amber"
+          onClick={() => router.push('/home')}
+        >
+          ホームへ進む
+        </button>
       </div>
     )
   }
