@@ -31,7 +31,7 @@ export function ColdBathScatter({ sessions, sets }: ColdBathProps) {
   }
 
   return (
-    <ResponsiveContainer width="100%" height={160}>
+    <ResponsiveContainer width="100%" height={200}>
       <ScatterChart margin={{ top: 4, right: 8, left: -20, bottom: 0 }}>
         <CartesianGrid strokeDasharray="3 3" stroke="#2E2E2E" />
         <XAxis dataKey="cold" name="水風呂" unit="秒"
@@ -65,7 +65,7 @@ export function SleepScatter({ sessions, conditions }: SleepProps) {
   }
 
   return (
-    <ResponsiveContainer width="100%" height={160}>
+    <ResponsiveContainer width="100%" height={200}>
       <ScatterChart margin={{ top: 4, right: 8, left: -20, bottom: 0 }}>
         <CartesianGrid strokeDasharray="3 3" stroke="#2E2E2E" />
         <XAxis dataKey="sleep" name="睡眠" unit="h"

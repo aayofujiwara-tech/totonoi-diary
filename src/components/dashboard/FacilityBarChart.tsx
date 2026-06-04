@@ -23,7 +23,7 @@ export default function FacilityBarChart({ facilities, sessions }: Props) {
   }
 
   return (
-    <ResponsiveContainer width="100%" height={160}>
+    <ResponsiveContainer width="100%" height={200}>
       <BarChart data={data} margin={{ top: 4, right: 8, left: -20, bottom: 0 }}>
         <CartesianGrid strokeDasharray="3 3" stroke="#2E2E2E" vertical={false} />
         <XAxis dataKey="name" tick={{ fontSize: 9, fill: '#9ca3af' }} axisLine={{ stroke: '#2E2E2E' }} tickLine={false} />
