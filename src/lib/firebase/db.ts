@@ -183,20 +183,23 @@ export async function getAllSessionsForDashboard(userId: string): Promise<{
 // ── Record保存（セッション + セット + コンディションを一括書き込み）──
 
 export async function saveRecord(userId: string, data: RecordFormData): Promise<string> {
+  console.log('[saveRecord] start — userId:', userId, 'score:', data.totonoilScore, 'sets:', data.sets.length)
+
   let resolvedFacilityId = data.facilityId
 
-  // 新規施設の場合は先にfacilitiesに追加
   if (data.facilityId === '__new__' && data.facilityName) {
     resolvedFacilityId = await addFacility(userId, {
       name: data.facilityName,
       loyly: false,
     })
+    console.log('[saveRecord] new facility created:', resolvedFacilityId)
   }
 
   const batch = writeBatch(db)
 
-  // session
   const sessionRef = doc(collection(db, 'sessions'))
+  console.log('[saveRecord] sessionRef.id:', sessionRef.id)
+
   batch.set(sessionRef, {
     userId,
     facilityId: resolvedFacilityId ?? null,
@@ -206,10 +209,11 @@ export async function saveRecord(userId: string, data: RecordFormData): Promise<
     createdAt: serverTimestamp(),
   })
 
-  // sets
+  // userId をsets/conditionsにも付与（セキュリティルール評価時にget()不要にするため）
   data.sets.forEach(s => {
     const setRef = doc(collection(db, 'sets'))
     batch.set(setRef, {
+      userId,
       sessionId: sessionRef.id,
       setNumber: s.setNumber,
       saunaMinutes: s.saunaMinutes ?? null,
@@ -221,16 +225,24 @@ export async function saveRecord(userId: string, data: RecordFormData): Promise<
     })
   })
 
-  // condition
   const condRef = doc(collection(db, 'conditions'))
   batch.set(condRef, {
+    userId,
     sessionId: sessionRef.id,
     sleepHours: data.condition.sleepHours ?? null,
     physicalCondition: data.condition.physicalCondition ?? null,
     hungerLevel: data.condition.hungerLevel ?? null,
   })
 
-  await batch.commit()
+  try {
+    await batch.commit()
+    console.log('[saveRecord] batch committed successfully')
+  } catch (err) {
+    console.error('[saveRecord] batch.commit failed:', err)
+    console.error('[saveRecord] userId was:', userId)
+    throw err
+  }
+
   return sessionRef.id
 }
 

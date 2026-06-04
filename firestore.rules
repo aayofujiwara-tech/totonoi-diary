@@ -16,26 +16,19 @@ service cloud.firestore {
         && request.auth.uid == request.resource.data.userId;
     }
 
+    // sets/conditionsはuserIdフィールドを直接持つ（batch writeでsessionより先に評価されるためget()は使えない）
     match /sets/{setId} {
       allow read, write: if request.auth != null
-        && request.auth.uid == get(
-            /databases/$(database)/documents/sessions/$(resource.data.sessionId)
-          ).data.userId;
+        && request.auth.uid == resource.data.userId;
       allow create: if request.auth != null
-        && request.auth.uid == get(
-            /databases/$(database)/documents/sessions/$(request.resource.data.sessionId)
-          ).data.userId;
+        && request.auth.uid == request.resource.data.userId;
     }
 
     match /conditions/{conditionId} {
       allow read, write: if request.auth != null
-        && request.auth.uid == get(
-            /databases/$(database)/documents/sessions/$(resource.data.sessionId)
-          ).data.userId;
+        && request.auth.uid == resource.data.userId;
       allow create: if request.auth != null
-        && request.auth.uid == get(
-            /databases/$(database)/documents/sessions/$(request.resource.data.sessionId)
-          ).data.userId;
+        && request.auth.uid == request.resource.data.userId;
     }
   }
 }
