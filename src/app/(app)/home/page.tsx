@@ -48,7 +48,10 @@ export default function HomePage() {
 
     getRecentSessions(user.uid, 10)
       .then(setSessions)
-      .catch(() => setError('データの取得に失敗しました'))
+      .catch((err) => {
+        console.error('[home] getRecentSessions failed:', err)
+        setError('データの取得に失敗しました')
+      })
       .finally(() => setLoading(false))
   }, [user, authLoading])
 
