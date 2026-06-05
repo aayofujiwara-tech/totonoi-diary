@@ -1,5 +1,6 @@
 import type { Metadata, Viewport } from 'next'
 import './globals.css'
+import Providers from '@/components/Providers'
 
 export const metadata: Metadata = {
   title: 'ととログ',
@@ -26,7 +27,9 @@ export default function RootLayout({
       </head>
       <body className="bg-[#111111] text-white antialiased">
         <div className="app-container">
-          {children}
+          <Providers>
+            {children}
+          </Providers>
         </div>
       </body>
     </html>

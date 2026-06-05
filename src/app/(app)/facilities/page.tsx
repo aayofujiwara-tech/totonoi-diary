@@ -4,7 +4,11 @@ import { useState, useEffect } from 'react'
 import { Plus, X, MapPin, Flame, ChevronRight, Trash2, AlertTriangle } from 'lucide-react'
 import StarRating from '@/components/ui/StarRating'
 import { useAuth } from '@/hooks/useAuth'
+import { useGuest } from '@/contexts/GuestContext'
 import { getFacilities, addFacility, getAllSessionsForDashboard, deleteFacility } from '@/lib/firebase/db'
+import {
+  guestGetFacilities, guestAddFacility, guestGetAllSessionsForDashboard, guestDeleteFacility,
+} from '@/lib/guest/storage'
 import type { Facility, Session } from '@/lib/types'
 
 type FacilityStats = { count: number; avg: number }
@@ -200,6 +204,7 @@ function DeleteConfirmModal({
 
 export default function FacilitiesPage() {
   const { user } = useAuth()
+  const { isGuest } = useGuest()
   const [facilities, setFacilities] = useState<Facility[]>([])
   const [sessions, setSessions] = useState<Session[]>([])
   const [loading, setLoading] = useState(true)
@@ -210,6 +215,21 @@ export default function FacilitiesPage() {
   const [statsMap, setStatsMap] = useState<Map<string, FacilityStats>>(new Map())
 
   useEffect(() => {
+    if (isGuest) {
+      Promise.all([guestGetFacilities(), guestGetAllSessionsForDashboard()])
+        .then(([facs, data]) => {
+          setFacilities(facs)
+          setSessions(data.sessions)
+          const map = new Map<string, FacilityStats>()
+          facs.forEach(f => {
+            const s = data.sessions.filter(x => x.facilityId === f.id)
+            const avg = s.length > 0 ? s.reduce((a, x) => a + x.totonoilScore, 0) / s.length : 0
+            map.set(f.id, { count: s.length, avg: Math.round(avg * 10) / 10 })
+          })
+          setStatsMap(map)
+        }).catch(() => setFetchError(true)).finally(() => setLoading(false))
+      return
+    }
     if (!user) return
     Promise.all([
       getFacilities(user.uid),
@@ -225,19 +245,26 @@ export default function FacilitiesPage() {
       })
       setStatsMap(map)
     }).catch(() => setFetchError(true)).finally(() => setLoading(false))
-  }, [user])
+  }, [user, isGuest])
 
   async function handleAddFacility(data: Omit<Facility, 'id' | 'userId' | 'createdAt'>) {
-    if (!user) return
-    const id = await addFacility(user.uid, data)
-    const newFac: Facility = { ...data, id, userId: user.uid, createdAt: new Date().toISOString() }
+    const uid = isGuest ? 'guest' : user?.uid
+    if (!uid) return
+    const id = isGuest
+      ? await guestAddFacility(data)
+      : await addFacility(uid, data)
+    const newFac: Facility = { ...data, id, userId: uid, createdAt: new Date().toISOString() }
     setFacilities(prev => [newFac, ...prev])
     setStatsMap(prev => new Map(prev).set(id, { count: 0, avg: 0 }))
   }
 
   async function handleDeleteFacility() {
     if (!facilityToDelete) return
-    await deleteFacility(facilityToDelete.id)
+    if (isGuest) {
+      await guestDeleteFacility(facilityToDelete.id)
+    } else {
+      await deleteFacility(facilityToDelete.id)
+    }
     setFacilities(prev => prev.filter(f => f.id !== facilityToDelete.id))
     setStatsMap(prev => { const m = new Map(prev); m.delete(facilityToDelete.id); return m })
     setFacilityToDelete(null)
@@ -282,7 +309,6 @@ export default function FacilitiesPage() {
             return (
               <div key={facility.id} className="sauna-card hover:border-[#D4853A]/40 transition-colors duration-150">
                 <div className="flex items-start justify-between">
-                  {/* カード本体（詳細表示） */}
                   <button
                     className="flex-1 min-w-0 text-left"
                     onClick={() => setSelected(facility)}
@@ -302,7 +328,6 @@ export default function FacilitiesPage() {
                       </p>
                     )}
                   </button>
-                  {/* アクションボタン */}
                   <div className="flex items-center gap-1 ml-2 flex-shrink-0">
                     <button
                       onClick={() => setFacilityToDelete(facility)}

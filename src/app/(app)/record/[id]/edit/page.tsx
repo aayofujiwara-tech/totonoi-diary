@@ -6,7 +6,9 @@ import { Plus, ChevronLeft, ChevronRight, Check } from 'lucide-react'
 import StarRating from '@/components/ui/StarRating'
 import SetInput from '@/components/record/SetInput'
 import { useAuth } from '@/hooks/useAuth'
+import { useGuest } from '@/contexts/GuestContext'
 import { getSession, getFacilities, updateRecord } from '@/lib/firebase/db'
+import { guestGetSession, guestGetFacilities, guestUpdateRecord } from '@/lib/guest/storage'
 import type { Facility, RecordFormData, SetFormItem, Session } from '@/lib/types'
 
 const TOTAL_STEPS = 4
@@ -47,6 +49,7 @@ export default function EditRecordPage() {
   const router = useRouter()
   const { id } = useParams<{ id: string }>()
   const { user } = useAuth()
+  const { isGuest } = useGuest()
   const [facilities, setFacilities] = useState<Facility[]>([])
   const [step, setStep] = useState(1)
   const [saving, setSaving] = useState(false)
@@ -61,7 +64,18 @@ export default function EditRecordPage() {
   })
 
   useEffect(() => {
-    if (!user || !id) return
+    if (!id) return
+    if (isGuest) {
+      Promise.all([guestGetSession(id), guestGetFacilities()])
+        .then(([session, facs]) => {
+          if (session) setForm(sessionToForm(session))
+          setFacilities(facs)
+        })
+        .catch(console.error)
+        .finally(() => setLoadingData(false))
+      return
+    }
+    if (!user) return
     Promise.all([getSession(id, user.uid), getFacilities(user.uid)])
       .then(([session, facs]) => {
         if (session) setForm(sessionToForm(session))
@@ -69,7 +83,7 @@ export default function EditRecordPage() {
       })
       .catch(console.error)
       .finally(() => setLoadingData(false))
-  }, [user, id])
+  }, [user, id, isGuest])
 
   function updateCondition<K extends keyof RecordFormData['condition']>(k: K, v: RecordFormData['condition'][K]) {
     setForm(f => ({ ...f, condition: { ...f.condition, [k]: v } }))
@@ -89,10 +103,14 @@ export default function EditRecordPage() {
   }
 
   async function handleSubmit() {
-    if (!user) { setSaveError('ログインが必要です'); return }
+    if (!user && !isGuest) { setSaveError('ログインが必要です'); return }
     setSaving(true); setSaveError('')
     try {
-      await updateRecord(id, user.uid, form)
+      if (isGuest) {
+        await guestUpdateRecord(id, form)
+      } else {
+        await updateRecord(id, user!.uid, form)
+      }
       router.replace(`/sessions/${id}`)
     } catch (err) {
       console.error('[updateRecord]', err)

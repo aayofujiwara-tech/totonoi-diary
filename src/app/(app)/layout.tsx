@@ -6,16 +6,18 @@ import { Flame } from 'lucide-react'
 import BottomNav from '@/components/ui/BottomNav'
 import SideNav from '@/components/ui/SideNav'
 import { useAuth } from '@/hooks/useAuth'
+import { useGuest } from '@/contexts/GuestContext'
 
 export default function AppLayout({ children }: { children: React.ReactNode }) {
   const { user, loading } = useAuth()
+  const { isGuest } = useGuest()
   const router = useRouter()
 
   useEffect(() => {
-    if (!loading && !user) {
+    if (!loading && !user && !isGuest) {
       router.replace('/login')
     }
-  }, [user, loading, router])
+  }, [user, loading, isGuest, router])
 
   if (loading) {
     return (
@@ -28,12 +30,17 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
     )
   }
 
-  if (!user) return null
+  if (!user && !isGuest) return null
 
   return (
     <div className="md:flex md:max-w-[1280px] md:mx-auto md:min-h-dvh">
       <SideNav />
       <main className="flex-1 min-w-0 page-content md:pb-0">
+        {isGuest && (
+          <div className="md:hidden sticky top-0 z-30 bg-[#D4853A] text-white text-xs text-center py-1.5 px-4 font-medium">
+            ゲストモード — データはこの端末にのみ保存されます
+          </div>
+        )}
         <div className="md:max-w-[800px] md:mx-auto">
           {children}
         </div>

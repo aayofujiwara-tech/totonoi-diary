@@ -5,6 +5,7 @@ import Link from 'next/link'
 import { useRouter } from 'next/navigation'
 import { signIn, signInWithGoogle } from '@/lib/firebase/auth'
 import { useAuth } from '@/hooks/useAuth'
+import { useGuest } from '@/contexts/GuestContext'
 import { Flame } from 'lucide-react'
 
 function GoogleIcon() {
@@ -21,6 +22,7 @@ function GoogleIcon() {
 export default function LoginPage() {
   const router = useRouter()
   const { user, loading: authLoading } = useAuth()
+  const { isGuest, activateGuest } = useGuest()
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
   const [error, setError] = useState('')
@@ -28,10 +30,11 @@ export default function LoginPage() {
   const [googleLoading, setGoogleLoading] = useState(false)
 
   useEffect(() => {
+    if (isGuest) { router.replace('/home'); return }
     if (!authLoading && user) router.replace('/home')
-  }, [user, authLoading, router])
+  }, [user, authLoading, isGuest, router])
 
-  if (authLoading || user) {
+  if (isGuest || authLoading || user) {
     return (
       <div className="min-h-dvh flex items-center justify-center">
         <div className="w-10 h-10 bg-[#D4853A]/20 rounded-xl flex items-center justify-center animate-pulse">
@@ -76,6 +79,11 @@ export default function LoginPage() {
     } finally {
       setGoogleLoading(false)
     }
+  }
+
+  function handleGuestMode() {
+    activateGuest()
+    router.push('/home')
   }
 
   return (
@@ -129,6 +137,28 @@ export default function LoginPage() {
           {loading ? 'ログイン中...' : 'ログイン'}
         </button>
       </form>
+
+      {/* ゲストモード区切り */}
+      <div className="w-full max-w-sm flex items-center gap-3 mt-6 mb-4">
+        <div className="flex-1 h-px bg-[#2E2E2E]" />
+        <span className="text-xs text-gray-500">または</span>
+        <div className="flex-1 h-px bg-[#2E2E2E]" />
+      </div>
+
+      {/* ゲストとして試す */}
+      <div className="w-full max-w-sm">
+        <button
+          type="button"
+          onClick={handleGuestMode}
+          className="w-full flex items-center justify-center gap-2 py-3 px-6 rounded-xl border border-[#D4853A]/40 text-[#D4853A] text-sm font-semibold hover:bg-[#D4853A]/10 active:bg-[#D4853A]/20 transition-colors duration-150"
+        >
+          <Flame className="w-4 h-4" />
+          ゲストとして試す
+        </button>
+        <p className="text-center text-xs text-gray-600 mt-2">
+          登録不要・データはこの端末にのみ保存されます
+        </p>
+      </div>
 
       <p className="mt-6 text-gray-400 text-sm">
         アカウントをお持ちでない方は{' '}

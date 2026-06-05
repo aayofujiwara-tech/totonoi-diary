@@ -5,7 +5,9 @@ import Link from 'next/link'
 import { Flame, ChevronRight, Droplets, Wind } from 'lucide-react'
 import StarRating from '@/components/ui/StarRating'
 import { useAuth } from '@/hooks/useAuth'
+import { useGuest } from '@/contexts/GuestContext'
 import { getRecentSessions } from '@/lib/firebase/db'
+import { guestGetRecentSessions } from '@/lib/guest/storage'
 import type { Session } from '@/lib/types'
 import {
   LineChart, Line, ResponsiveContainer, Tooltip, XAxis, YAxis, ReferenceLine,
@@ -38,14 +40,18 @@ function ScoreChip({ score }: { score: number }) {
 
 export default function HomePage() {
   const { user, loading: authLoading } = useAuth()
+  const { isGuest } = useGuest()
   const [sessions, setSessions] = useState<Session[]>([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState('')
 
   useEffect(() => {
+    if (isGuest) {
+      guestGetRecentSessions(10).then(setSessions).finally(() => setLoading(false))
+      return
+    }
     if (authLoading) return
     if (!user) { setLoading(false); return }
-
     getRecentSessions(user.uid, 10)
       .then(setSessions)
       .catch((err) => {
@@ -53,7 +59,7 @@ export default function HomePage() {
         setError('データの取得に失敗しました')
       })
       .finally(() => setLoading(false))
-  }, [user, authLoading])
+  }, [user, authLoading, isGuest])
 
   const recentFive = sessions.slice(0, 5)
   const weeklyScores = buildWeeklyData(sessions)

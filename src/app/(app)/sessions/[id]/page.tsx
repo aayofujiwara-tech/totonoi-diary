@@ -9,7 +9,9 @@ import {
 } from 'lucide-react'
 import StarRating from '@/components/ui/StarRating'
 import { useAuth } from '@/hooks/useAuth'
+import { useGuest } from '@/contexts/GuestContext'
 import { getSession, deleteRecord } from '@/lib/firebase/db'
+import { guestGetSession, guestDeleteRecord } from '@/lib/guest/storage'
 import type { Session } from '@/lib/types'
 
 const restTypeLabel = { outdoor: '屋外', indoor: '室内', none: 'なし' } as const
@@ -24,6 +26,7 @@ export default function SessionDetailPage() {
   const router = useRouter()
   const { id } = useParams<{ id: string }>()
   const { user, loading: authLoading } = useAuth()
+  const { isGuest } = useGuest()
   const [session, setSession] = useState<Session | null>(null)
   const [loading, setLoading] = useState(true)
   const [fetchError, setFetchError] = useState('')
@@ -31,18 +34,27 @@ export default function SessionDetailPage() {
   const [showConfirm, setShowConfirm] = useState(false)
 
   useEffect(() => {
-    if (!id || authLoading) return
+    if (!id) return
+    if (isGuest) {
+      guestGetSession(id).then(setSession).catch(err => setFetchError(String(err))).finally(() => setLoading(false))
+      return
+    }
+    if (authLoading) return
     if (!user) { setLoading(false); return }
     getSession(id, user.uid)
       .then(setSession)
       .catch(err => setFetchError(String(err?.code ?? err?.message ?? '取得に失敗しました')))
       .finally(() => setLoading(false))
-  }, [id, user, authLoading])
+  }, [id, user, authLoading, isGuest])
 
   async function handleDelete() {
     setDeleting(true)
     try {
-      await deleteRecord(id, user!.uid)
+      if (isGuest) {
+        await guestDeleteRecord(id)
+      } else {
+        await deleteRecord(id, user!.uid)
+      }
       router.replace('/home')
     } catch (err) {
       console.error('[delete]', err)

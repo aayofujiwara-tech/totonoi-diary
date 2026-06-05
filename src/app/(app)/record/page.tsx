@@ -6,7 +6,9 @@ import { Plus, ChevronLeft, ChevronRight, Check } from 'lucide-react'
 import StarRating from '@/components/ui/StarRating'
 import SetInput from '@/components/record/SetInput'
 import { useAuth } from '@/hooks/useAuth'
+import { useGuest } from '@/contexts/GuestContext'
 import { getFacilities, saveRecord } from '@/lib/firebase/db'
+import { guestGetFacilities, guestSaveRecord } from '@/lib/guest/storage'
 import type { Facility, RecordFormData, SetFormItem } from '@/lib/types'
 
 const TOTAL_STEPS = 4
@@ -20,6 +22,7 @@ const hungerLabels = { hungry: '空腹', normal: '普通', full: '満腹' } as c
 export default function RecordPage() {
   const router = useRouter()
   const { user, loading: authLoading } = useAuth()
+  const { isGuest } = useGuest()
   const [facilities, setFacilities] = useState<Facility[]>([])
   const [step, setStep] = useState(1)
   const [saving, setSaving] = useState(false)
@@ -37,9 +40,13 @@ export default function RecordPage() {
   })
 
   useEffect(() => {
+    if (isGuest) {
+      guestGetFacilities().then(setFacilities).catch(() => {})
+      return
+    }
     if (!user) return
     getFacilities(user.uid).then(setFacilities).catch(() => {})
-  }, [user])
+  }, [user, isGuest])
 
   function updateCondition<K extends keyof RecordFormData['condition']>(
     key: K, value: RecordFormData['condition'][K]
@@ -70,14 +77,18 @@ export default function RecordPage() {
   }
 
   async function handleSubmit() {
-    if (!user) {
+    if (!user && !isGuest) {
       setSaveError('ログインが必要です。再ログインしてください。')
       return
     }
     setSaving(true)
     setSaveError('')
     try {
-      await saveRecord(user.uid, form)
+      if (isGuest) {
+        await guestSaveRecord(form)
+      } else {
+        await saveRecord(user!.uid, form)
+      }
       setDone(true)
     } catch (err) {
       console.error('saveRecord error:', err)
@@ -285,10 +296,10 @@ export default function RecordPage() {
               <p className="text-xs text-red-400 bg-red-400/10 rounded-lg px-3 py-2 text-center">{saveError}</p>
             )}
             <button type="button" onClick={handleSubmit}
-              disabled={saving || authLoading || form.totonoilScore === 0}
+              disabled={saving || (!isGuest && authLoading) || form.totonoilScore === 0}
               className="btn-amber w-full flex items-center justify-center gap-2"
             >
-              {saving ? '保存中...' : authLoading ? '準備中...' : <><Check className="w-4 h-4" />記録を保存</>}
+              {saving ? '保存中...' : (!isGuest && authLoading) ? '準備中...' : <><Check className="w-4 h-4" />記録を保存</>}
             </button>
           </div>
         )}

@@ -3,6 +3,7 @@
 import Link from 'next/link'
 import { usePathname } from 'next/navigation'
 import { Home, PenLine, Building2, BarChart2, User, Flame } from 'lucide-react'
+import { useGuest } from '@/contexts/GuestContext'
 
 const navItems = [
   { href: '/home', icon: Home, label: 'ホーム' },
@@ -14,6 +15,7 @@ const navItems = [
 
 export default function SideNav() {
   const pathname = usePathname()
+  const { isGuest } = useGuest()
 
   return (
     <aside className="hidden md:flex flex-col w-[220px] min-w-[220px] h-screen sticky top-0 bg-[#1A1A1A] border-r border-[#2E2E2E] z-40">
@@ -43,6 +45,18 @@ export default function SideNav() {
           )
         })}
       </nav>
+
+      {isGuest && (
+        <div className="px-3 pb-4">
+          <div className="flex items-center gap-2 bg-[#D4853A]/10 border border-[#D4853A]/30 rounded-xl px-3 py-2.5">
+            <Flame className="w-3.5 h-3.5 text-[#D4853A] flex-shrink-0" />
+            <div>
+              <p className="text-xs font-bold text-[#D4853A]">ゲストモード</p>
+              <p className="text-[10px] text-gray-500 leading-tight">データはこの端末のみ</p>
+            </div>
+          </div>
+        </div>
+      )}
     </aside>
   )
 }

@@ -4,7 +4,9 @@ import { useState, useEffect } from 'react'
 import dynamic from 'next/dynamic'
 import { Sparkles } from 'lucide-react'
 import { useAuth } from '@/hooks/useAuth'
+import { useGuest } from '@/contexts/GuestContext'
 import { getAllSessionsForDashboard } from '@/lib/firebase/db'
+import { guestGetAllSessionsForDashboard } from '@/lib/guest/storage'
 import type { Session, SetData, Condition, Facility } from '@/lib/types'
 
 const ScoreLineChart = dynamic(() => import('@/components/dashboard/ScoreLineChart'), { ssr: false })
@@ -51,17 +53,22 @@ function calcBestConditions(data: DashData) {
 
 export default function DashboardPage() {
   const { user } = useAuth()
+  const { isGuest } = useGuest()
   const [data, setData] = useState<DashData | null>(null)
   const [loading, setLoading] = useState(true)
   const [fetchError, setFetchError] = useState(false)
 
   useEffect(() => {
+    if (isGuest) {
+      guestGetAllSessionsForDashboard().then(setData).finally(() => setLoading(false))
+      return
+    }
     if (!user) return
     getAllSessionsForDashboard(user.uid)
       .then(setData)
       .catch(() => setFetchError(true))
       .finally(() => setLoading(false))
-  }, [user])
+  }, [user, isGuest])
 
   const best = data ? calcBestConditions(data) : null
   const hasEnough = (data?.sessions.length ?? 0) >= 3
