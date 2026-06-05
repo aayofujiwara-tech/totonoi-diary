@@ -1,9 +1,11 @@
 'use client'
 
 import Link from 'next/link'
-import { usePathname } from 'next/navigation'
-import { Home, PenLine, Building2, BarChart2, User, Flame } from 'lucide-react'
+import { usePathname, useRouter } from 'next/navigation'
+import { Home, PenLine, Building2, BarChart2, User, Flame, LogOut } from 'lucide-react'
 import { useGuest } from '@/contexts/GuestContext'
+import { useAuth } from '@/hooks/useAuth'
+import { signOut } from '@/lib/firebase/auth'
 
 const navItems = [
   { href: '/home', icon: Home, label: 'ホーム' },
@@ -15,7 +17,18 @@ const navItems = [
 
 export default function SideNav() {
   const pathname = usePathname()
-  const { isGuest } = useGuest()
+  const router = useRouter()
+  const { user } = useAuth()
+  const { isGuest, deactivateGuest } = useGuest()
+
+  async function handleLogout() {
+    if (isGuest) {
+      deactivateGuest()
+    } else {
+      await signOut()
+    }
+    router.push('/login')
+  }
 
   return (
     <aside className="hidden md:flex flex-col w-[220px] min-w-[220px] h-screen sticky top-0 bg-[#1A1A1A] border-r border-[#2E2E2E] z-40">
@@ -46,8 +59,8 @@ export default function SideNav() {
         })}
       </nav>
 
-      {isGuest && (
-        <div className="px-3 pb-4">
+      <div className="px-3 pb-4 flex flex-col gap-2">
+        {isGuest && (
           <div className="flex items-center gap-2 bg-[#D4853A]/10 border border-[#D4853A]/30 rounded-xl px-3 py-2.5">
             <Flame className="w-3.5 h-3.5 text-[#D4853A] flex-shrink-0" />
             <div>
@@ -55,8 +68,20 @@ export default function SideNav() {
               <p className="text-[10px] text-gray-500 leading-tight">データはこの端末のみ</p>
             </div>
           </div>
-        </div>
-      )}
+        )}
+
+        {!isGuest && user && (
+          <p className="text-[11px] text-gray-600 truncate px-1">{user.email}</p>
+        )}
+
+        <button
+          onClick={handleLogout}
+          className="flex items-center gap-2.5 w-full px-3 py-2.5 rounded-xl text-sm font-medium text-gray-400 hover:text-red-400 hover:bg-red-900/15 transition-colors duration-150"
+        >
+          <LogOut className="w-4 h-4 flex-shrink-0 stroke-[1.5]" />
+          <span>{isGuest ? 'ゲストを終了' : 'ログアウト'}</span>
+        </button>
+      </div>
     </aside>
   )
 }
